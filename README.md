@@ -167,7 +167,6 @@ Set the returned Contract ID in `backend/.env` as `CONTRACT_ID=`.
 ## Demo
 
 - **Public repo:** https://github.com/pak-pow/PadalaFi
-- **Network:** Stellar Testnet
 
 ---
 
