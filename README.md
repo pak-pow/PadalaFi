@@ -3,8 +3,6 @@
 > **OFW Remittance + Micro-Lending on Stellar**
 > Send money home for near-zero fees. Let your family lock it as collateral for an instant micro-loan or stake it to earn yield — all on-chain.
 
-Built for the **StellarX Philippines Hackathon 2026** · Soroban Testnet
-
 ---
 
 ## The Problem
