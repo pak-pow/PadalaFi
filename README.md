@@ -177,7 +177,7 @@ Set the returned Contract ID in `backend/.env` as `CONTRACT_ID=`.
 - [x] README explains problem, Stellar usage, and setup
 - [x] Soroban smart contract with unit tests
 - [x] Working frontend connected to real Horizon + Freighter
-- [ ] Submitted via SwitchX hackathon portal
+- [x] Submitted via SwitchX portal
 
 ---
 
