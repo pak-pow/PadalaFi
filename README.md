@@ -169,7 +169,6 @@ Set the returned Contract ID in `backend/.env` as `CONTRACT_ID=`.
 ## Demo
 
 - **Public repo:** https://github.com/pak-pow/PadalaFi
-- **Demo video:** *(coming soon — link here before submission)*
 - **Network:** Stellar Testnet
 
 ---
@@ -180,7 +179,6 @@ Set the returned Contract ID in `backend/.env` as `CONTRACT_ID=`.
 - [x] README explains problem, Stellar usage, and setup
 - [x] Soroban smart contract with unit tests
 - [x] Working frontend connected to real Horizon + Freighter
-- [ ] Demo video (2–4 min showing the core flow on testnet)
 - [ ] Submitted via SwitchX hackathon portal
 
 ---
