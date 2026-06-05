@@ -10,12 +10,13 @@ interface Rates {
 
 interface DashboardProps {
   walletAddress: string;
+  network: string | null;
   rates: Rates;
 }
 
 type DashTab = "overview" | "stake" | "borrow" | "history";
 
-export default function Dashboard({ walletAddress, rates }: DashboardProps) {
+export default function Dashboard({ walletAddress, network, rates }: DashboardProps) {
   const [dashTab, setDashTab] = useState<DashTab>("overview");
   const [collateral, setCollateral] = useState(0);
   const [borrowed, setBorrowed] = useState(0);
@@ -34,11 +35,8 @@ export default function Dashboard({ walletAddress, rates }: DashboardProps) {
         if (d.balances) setStellarBalance(d.balances);
       })
       .catch(() => {
-        // Fallback demo balances
-        setStellarBalance([
-          { asset: "USDC", balance: "500.0000000" },
-          { asset: "XLM", balance: "94.8200000" },
-        ]);
+        // Backend not running — show empty state, not fake data
+        setStellarBalance([]);
       })
       .finally(() => setLoading(false));
   }, [walletAddress]);
@@ -403,45 +401,110 @@ export default function Dashboard({ walletAddress, rates }: DashboardProps) {
 
       {/* HISTORY */}
       {dashTab === "history" && (
-        <div className="fade-in space-y-4">
-          <div>
-            <h2 className="text-xl font-bold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
-              Remittance History
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              Incoming USDC transactions to your Stellar address.
-            </p>
-          </div>
+        <HistoryTab walletAddress={walletAddress} network={network} />
+      )}
+    </div>
+  );
+}
 
-          {/* Mock history */}
-          {[
-            { from: "GOFWXXX...4321", amount: "200.00", date: "Jun 03, 2026", memo: "Allowance June" },
-            { from: "GOFWXXX...4321", amount: "150.00", date: "May 15, 2026", memo: "Emergency fund" },
-            { from: "GOFWXXX...4321", amount: "500.00", date: "Apr 30, 2026", memo: "School tuition" },
-          ].map((tx, i) => (
-            <div key={i} className="card p-4 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg"
-                style={{ background: "rgba(16,185,129,0.1)" }}>
-                📥
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
-                    +{tx.amount} USDC
-                  </span>
-                  <span className="badge-green">Received</span>
-                </div>
-                <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
-                  From: {tx.from} · {tx.memo}
-                </div>
-              </div>
-              <div className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>
-                {tx.date}
-              </div>
-            </div>
+// ─── Real History Tab ─────────────────────────────────────────────────────────
+interface RemittanceTx {
+  id: string;
+  from: string;
+  amount: string;
+  asset: string;
+  date: string;
+  memo: string | null;
+}
+
+function HistoryTab({ walletAddress, network }: { walletAddress: string; network: string | null }) {
+  const [txs, setTxs] = useState<RemittanceTx[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`http://localhost:4000/api/remittances/${walletAddress}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setTxs(d.remittances || []);
+      })
+      .catch(() => {
+        setError("Could not fetch transaction history. Make sure the backend is running.");
+      })
+      .finally(() => setLoading(false));
+  }, [walletAddress]);
+
+  return (
+    <div className="fade-in space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold mb-1" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+            Remittance History
+          </h2>
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Incoming USDC transactions from Stellar {network || "Testnet"}.
+          </p>
+        </div>
+        <a
+          href={`https://stellar.expert/explorer/testnet/account/${walletAddress}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-medium hover:underline"
+          style={{ color: "var(--gold-400)" }}
+        >
+          View on Explorer ↗
+        </a>
+      </div>
+
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="shimmer h-16 rounded-xl" />
           ))}
         </div>
       )}
+
+      {error && (
+        <div className="card p-5 text-center">
+          <div className="text-2xl mb-2">⚠️</div>
+          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>{error}</div>
+        </div>
+      )}
+
+      {!loading && !error && txs.length === 0 && (
+        <div className="card p-10 text-center">
+          <div className="text-4xl mb-3">📭</div>
+          <div className="font-semibold mb-1" style={{ color: "var(--text-primary)" }}>No remittances yet</div>
+          <div className="text-sm" style={{ color: "var(--text-secondary)" }}>
+            Once someone sends USDC to your address on Stellar Testnet, it will appear here.
+          </div>
+        </div>
+      )}
+
+      {!loading && txs.map((tx) => (
+        <div key={tx.id} className="card p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-lg"
+            style={{ background: "rgba(16,185,129,0.1)" }}>
+            📥
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-semibold text-sm" style={{ color: "var(--text-primary)" }}>
+                +{tx.amount} {tx.asset}
+              </span>
+              <span className="badge-green">Received</span>
+            </div>
+            <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+              From: {tx.from.slice(0, 8)}...{tx.from.slice(-6)}
+              {tx.memo && ` · ${tx.memo}`}
+            </div>
+          </div>
+          <div className="text-xs shrink-0 text-right" style={{ color: "var(--text-muted)" }}>
+            {new Date(tx.date).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

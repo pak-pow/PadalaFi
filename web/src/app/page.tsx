@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { isConnected, requestAccess, getNetworkDetails } from "@stellar/freighter-api";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import SendRemittance from "@/components/SendRemittance";
@@ -11,34 +12,50 @@ export type Tab = "send" | "dashboard";
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [network, setNetwork] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("send");
   const [rates, setRates] = useState({ depositAPY: 8.4, borrowAPR: 12.0, ltv: 50 });
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("http://localhost:4000/api/rates")
       .then((r) => r.json())
       .then((d) => setRates(d))
-      .catch(() => {}); // silently fallback to defaults
+      .catch(() => {});
   }, []);
 
   const handleConnect = async () => {
     if (walletAddress) {
       setWalletAddress(null);
+      setNetwork(null);
       return;
     }
-    // Real Freighter connection
-    // @ts-expect-error freighter global
-    if (typeof window !== "undefined" && window.freighter) {
-      try {
-        // @ts-expect-error freighter global
-        const { publicKey } = await window.freighter.getPublicKey();
-        setWalletAddress(publicKey);
-      } catch {
-        alert("Please approve the connection in Freighter.");
+
+    setConnectError(null);
+
+    try {
+      // Check if Freighter is installed
+      const connected = await isConnected();
+      if (!connected.isConnected) {
+        setConnectError("Freighter is not installed. Please install it from freighter.app");
+        return;
       }
-    } else {
-      // Demo mode — use a mock testnet address so the UI is functional
-      setWalletAddress("GBDEMOOFWDEMOOOFWDEMOOOFWDEMO123EXAMPLEKEY5TESTNET");
+
+      // Request wallet access — Freighter will pop up for approval
+      const accessResult = await requestAccess();
+      if (accessResult.error) {
+        setConnectError("Connection rejected. Please approve in Freighter.");
+        return;
+      }
+
+      // Get network details
+      const networkDetails = await getNetworkDetails();
+      setNetwork(networkDetails.networkPassphrase?.includes("Test") ? "Testnet" : "Mainnet");
+      setWalletAddress(accessResult.address);
+      setActiveTab("dashboard");
+    } catch (err) {
+      setConnectError("Could not connect to Freighter. Please try again.");
+      console.error(err);
     }
   };
 
@@ -46,10 +63,18 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: "var(--navy-950)" }}>
       <Navbar
         walletAddress={walletAddress}
+        network={network}
         onConnect={handleConnect}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
+      {connectError && (
+        <div className="max-w-xl mx-auto mt-4 px-4">
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", color: "#fca5a5" }}>
+            <span>⚠️</span> {connectError}
+          </div>
+        </div>
+      )}
 
       {!walletAddress ? (
         <>
@@ -79,7 +104,7 @@ export default function Home() {
               <SendRemittance walletAddress={walletAddress} />
             )}
             {activeTab === "dashboard" && (
-              <Dashboard walletAddress={walletAddress} rates={rates} />
+              <Dashboard walletAddress={walletAddress} network={network} rates={rates} />
             )}
           </div>
         </main>
